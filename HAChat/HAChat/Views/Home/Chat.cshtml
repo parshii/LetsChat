@@ -119,10 +119,9 @@
 
 
 <h2 style="">Lets Chat</h2>
-<div>
+<div style="color: darkgreen">
     Online
-    <ul id="online">
-    </ul>
+    <ul id="online"></ul>
 </div>
 <div class="whatsNew">
     <ul>
@@ -169,11 +168,6 @@
     <!--SignalR script to update the chat page and send messages.-->
     <script>
         $(function () {
-            $(window).bind('beforeunload', function (e) {
-                var message = "Are your sure you want to leave?";
-                e.returnValue = message;
-                return message;
-            });
             // Reference the auto-generated proxy for the hub.
             var chat = $.connection.chatHub;
             var chats = {
@@ -183,7 +177,7 @@
             };
 
             function checkLogin(displayName) {
-                if (displayName.trim() !== '') {
+                if (displayName && displayName.trim() !== '') {
                     $("#loginForm").css("display", "none");
                     $("#chatContainer").css("display", "block");
                     $('#displayname').text('Hi ' + displayName + ', Lets Chat!!');
@@ -196,13 +190,14 @@
                 if (typeof (Storage) !== "undefined") {
                     var bugger = JSON.parse(localStorage.getItem("chats"));
                     $('#discussion').empty();
+                    $('#online').empty();
                     if (bugger && bugger.name.length > 0) {
                         chats = bugger;
                         for (var i = 0; i < chats.name.length; i++) {
                             $('#discussion').append('<li><strong>' + htmlEncode(chats.name[i])
                                 + '</strong>: ' + htmlEncode(chats.message[i]) + '</li>');
                         }
-                        $("#chatContainer").css("display", "block");                     
+                        $("#chatContainer").css("display", "block");
                         checkLogin(chats.displayName);
                     }
                 }
@@ -215,11 +210,17 @@
             // Create a function that the hub can call back to display messages.
             chat.client.addNewMessageToPage = function (name, message) {
                 // Add the message to the page.
-                chats.name.push(name);
-                chats.message.push(message);
-
-                $('#discussion').append('<li><strong>' + htmlEncode(name)
-                      + '</strong>: ' + htmlEncode(message) + '</li>');
+                if (message === 'online') {
+                    $('#online').append('<li><strong>' + htmlEncode(name)
+                          + '</strong></li>');
+                } else if (message === 'offline') {
+                    $($('#online').find(":contains(" + name + ")")[0]).remove();
+                } else {
+                    chats.name.push(name);
+                    chats.message.push(message);
+                    $('#discussion').append('<li><strong>' + htmlEncode(name)
+                          + '</strong>: ' + htmlEncode(message) + '</li>');
+                }
 
                 if (typeof (Storage) !== "undefined") {
                     localStorage.setItem("chats", JSON.stringify(chats));
@@ -228,6 +229,8 @@
                      + '</strong>: ' +
                      htmlEncode("Sorry, your browser does not support Web Storage...") + '</li>');
                 }
+
+
             };
 
             // Set initial focus to message input box.
@@ -249,12 +252,17 @@
                     localStorage.setItem("chats", JSON.stringify(chats));
                     checkHistory();
                     // Clear text box and reset focus for next comment.
+                    chat.server.send($('#name').val(), 'offline');
                     $('#message').val('').focus();
                     $("#loginForm").css("display", "block");
                     $("#chatContainer").css("display", "none");
                     $('#name').val('').focus();
                 });
 
+                $('#login').click(function () {
+                    chat.server.send($('#name').val(), 'online');
+                    checkLogin($('#name').val());
+                });
 
 
             });
@@ -270,9 +278,7 @@
                 }
             });
 
-            $('#login').click(function () {
-                checkLogin($('#name').val());
-            });
+
 
         });
         // This optional function html-encodes messages for display in the page.
