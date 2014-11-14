@@ -220,6 +220,9 @@
                     chats.message.push(message);
                     $('#discussion').append('<li><strong>' + htmlEncode(name)
                           + '</strong>: ' + htmlEncode(message) + '</li>');
+                    $('#displayname').val() === name? function () {
+                                //Do nothing
+                    }  : notifyMe(name, message);
                 }
 
                 if (typeof (Storage) !== "undefined") {
@@ -240,9 +243,10 @@
 
                 $('#sendmessage').click(function () {
                     // Call the Send method on the hub.
-                    chat.server.send($('#displayname').val(), $('#message').val());
+                    chat.server.send($('#displayname').val(), $('#message').val());                   
                     // Clear text box and reset focus for next comment.
                     $('#message').val('').focus();
+                  
                 });
 
                 $('#cleanHistory').click(function () {
@@ -278,7 +282,31 @@
                 }
             });
 
+            //Notification logic
+            function notifyMe(name, message) {
+                // Let's check if the browser supports notifications
+                if (!("Notification" in window)) {
+                    alert("This browser does not support desktop notification");
+                }
 
+                    // Let's check if the user is okay to get some notification
+                else if (Notification.permission === "granted") {
+                    // If it's okay let's create a notification
+                    var notification = new Notification(name + ': ' + message);
+                }
+
+                    // Otherwise, we need to ask the user for permission
+                    // Note, Chrome does not implement the permission static property
+                    // So we have to check for NOT 'denied' instead of 'default'
+                else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission(function (permission) {
+                        // If the user is okay, let's create a notification
+                        if (permission === "granted") {
+                            var notification = new Notification(name + ': ' + message);
+                        }
+                    });
+                }
+            }
 
         });
         // This optional function html-encodes messages for display in the page.
